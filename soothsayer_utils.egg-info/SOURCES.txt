@@ -1,0 +1,11 @@
+MANIFEST.in
+README.md
+setup.py
+soothsayer_utils/__init__.py
+soothsayer_utils/soothsayer_utils.py
+soothsayer_utils.egg-info/Icon
+soothsayer_utils.egg-info/PKG-INFO
+soothsayer_utils.egg-info/SOURCES.txt
+soothsayer_utils.egg-info/dependency_links.txt
+soothsayer_utils.egg-info/requires.txt
+soothsayer_utils.egg-info/top_level.txt

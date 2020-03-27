@@ -39,12 +39,7 @@ def format_duration(start_time):
     minutes, seconds = divmod(remainder, 60)
     return "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
 
-# Format filename
-def format_filename(name, replace="_"):
-    Ar_name = np.array(list(name))
-    idx_nonalnum = list(map(lambda x: x.isalnum() == False,  Ar_name))
-    Ar_name[idx_nonalnum] = replace
-    return "".join(Ar_name)
+
 # Format file path
 def format_path(path, into=str):
     assert not is_file_like(path), "`path` cannot be file-like"
@@ -882,7 +877,7 @@ def read_blast(path, length_query=None, length_subject=None, sort_by="bitscore")
 
     return df_blast
 # Helper function for reading gtf and gff3
-def _read_gtf_gff_base(path, compression, record_type, verbose):
+def read_gtf_gff_base(path, compression, record_type, verbose):
     # Read the gff3 file
     with get_file_object(path, mode="read", compression=compression, safe_mode=False, verbose=False) as f:
         if verbose:
@@ -924,7 +919,7 @@ def read_gff3(path, compression="infer", record_type=None, verbose = True, reset
     assert record_type in accepted_recordtypes, "Unrecognized record_type.  Please choose from the following: {}".format(accepted_recordtypes)
 
     # Read the gff3 file
-    df_base = _read_gtf_gff_base(path, compression, record_type, verbose)
+    df_base = read_gtf_gff_base(path, compression, record_type, verbose)
 
     try:
         df_fields = pd.DataFrame(df_base["data_fields"].map(f).to_dict()).T
@@ -955,7 +950,7 @@ def read_gtf(path, compression="infer", record_type=None, verbose = True, reset_
     assert record_type in accepted_recordtypes, "Unrecognized record_type.  Please choose from the following: {}".format(accepted_recordtypes)
 
     # Read the gtf file
-    df_base = _read_gtf_gff_base(path, compression, record_type, verbose)
+    df_base = read_gtf_gff_base(path, compression, record_type, verbose)
 
     # Splitting fields
     iterable_fields =  df_base.iloc[:,-1].iteritems()
@@ -1053,137 +1048,7 @@ def read_ebi_sample_metadata(query, base_url="https://www.ebi.ac.uk/metagenomics
     )
 
 
-# ===============
-# Shell utilities
-# ===============
-# # View directory structures
-class DisplayablePath(object):
-    """
-    Display the tree structure of a directory.
 
-    Implementation adapted from the following sources:
-        * Credits to @abstrus
-        https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
-    """
-    display_filename_prefix_middle = '|__'
-    display_filename_prefix_last = '|__'
-    display_parent_prefix_middle = '    '
-    display_parent_prefix_last = '|   '
-
-    def __init__(self, path, parent_path, is_last):
-        self.path = pathlib.Path(str(path))
-        self.parent = parent_path
-        self.is_last = is_last
-        if self.parent:
-            self.depth = self.parent.depth + 1
-        else:
-            self.depth = 0
-
-    @property
-    def displayname(self):
-        if self.path.is_dir():
-            return self.path.name + '/'
-        return self.path.name
-
-    @classmethod
-    def make_tree(cls, root, parent=None, is_last=False, criteria=None):
-        root = pathlib.Path(str(root))
-        criteria = criteria or cls._default_criteria
-
-        displayable_root = cls(root, parent, is_last)
-        yield displayable_root
-
-        children = sorted(list(path
-                               for path in root.iterdir()
-                               if criteria(path)),
-                          key=lambda s: str(s).lower())
-        count = 1
-        for path in children:
-            is_last = count == len(children)
-            if path.is_dir():
-                for item in cls.make_tree(path, parent=displayable_root, is_last=is_last, criteria=criteria):
-                    yield item
-            else:
-                yield cls(path, displayable_root, is_last)
-            count += 1
-
-    @classmethod
-    def _default_criteria(cls, path):
-        return True
-
-    @property
-    def displayname(self):
-        if self.path.is_dir():
-            return self.path.name + '/'
-        return self.path.name
-
-    def displayable(self):
-        if self.parent is None:
-            return self.displayname
-
-        _filename_prefix = (self.display_filename_prefix_last
-                            if self.is_last
-                            else self.display_filename_prefix_middle)
-
-        parts = ['{!s} {!s}'.format(_filename_prefix,
-                                    self.displayname)]
-
-        parent = self.parent
-        while parent and parent.parent is not None:
-            parts.append(self.display_parent_prefix_middle
-                         if parent.is_last
-                         else self.display_parent_prefix_last)
-            parent = parent.parent
-
-        return ''.join(reversed(parts))
-
-    # Additions by Josh L. Espinoza for Soothsayer
-    @classmethod
-    def get_ascii(cls, root):
-        ascii_output = list()
-        paths = cls.make_tree(root)
-        for path in paths:
-            ascii_output.append(path.displayable())
-        return "\n".join(ascii_output)
-    @classmethod
-    def view(cls, root, file=sys.stdout):
-        print(cls.get_ascii(root), file=file)
-
-# Get directory tree structure
-def get_directory_tree(root, ascii=False):
-    if not ascii:
-        return DisplayablePath.view(root)
-    else:
-        return DisplayablePath.get_ascii(root)
-
-# Directory size
-def get_directory_size(path_directory='.'):
-    """
-    Adapted from @Chris:
-    https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python
-    """
-    path_directory = format_path(path_directory)
-
-    total_size = 0
-    seen = {}
-    for dirpath, dirnames, filenames in os.walk(path_directory):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            try:
-                stat = os.stat(fp)
-            except OSError:
-                continue
-
-            try:
-                seen[stat.st_ino]
-            except KeyError:
-                seen[stat.st_ino] = True
-            else:
-                continue
-
-            total_size += stat.st_size
-
-    return total_size
 
 # ==============
 # Bioinformatics
