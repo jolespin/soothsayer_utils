@@ -532,9 +532,7 @@ def get_file_object(path, mode="infer", compression="infer", safe_mode="infer", 
     path = format_path(path)
     path_exists = os.path.exists(path)
 
-    if verbose:
-        header = " ".join(["Processing file:", path])
-        print("="*len(header), header, "="*len(header), sep="\n", file=sys.stderr)
+
     if compression == "infer":
         compression = infer_compression(path)
         if verbose:
@@ -559,6 +557,13 @@ def get_file_object(path, mode="infer", compression="infer", safe_mode="infer", 
             mode = mode + "b"
         if verbose:
             print("Inferring mode:", mode, file=sys.stderr)
+
+    if verbose:
+        if mode == "r":
+            print("Reading file:",path, file=sys.stderr)
+
+        if mode == "w":
+            print("Writing file:",path, file=sys.stderr)
 
     # Will a file be written?
     if "w" in mode:
