@@ -14,3 +14,10 @@ Compatible for Python 2 and 3.
 	pathlib2 # Python 2/3 compatibility	
 	bz2file # Python 2/3 compatibility
 
+#### Install
+```
+# "Stable" release (still developmental)
+pip install soothsayer-utils
+# Current release
+pip install git+https://github.com/jolespin/soothsayer_utils
+```
