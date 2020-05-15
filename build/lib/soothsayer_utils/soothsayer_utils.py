@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, division
 # Built-ins
-import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, requests, operator, warnings
+import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, requests, operator, warnings, functools
 from collections import OrderedDict, defaultdict, Mapping
 from io import TextIOWrapper
 import xml.etree.ElementTree as ET
+from importlib import import_module
 
 if sys.version_info.major == 2:
-    import imp
     import pathlib2 as pathlib
     import string
     import bz2file
     setattr(bz2, "open", bz2file.open) # Hack to use open with bz2
 else:
-    import importlib
     import pathlib
-
-
 
 # External
 from tqdm import tqdm, tqdm_notebook, tqdm_gui
@@ -131,6 +128,79 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     target = set(target)
     func_operation = getattr(operator, operation)
     assert func_operation(query,target), "{}\n{}".format(message, target)
+
+# Check packages
+def check_packages(packages, namespace=None, language="python", verbose=False):
+    """
+    Check if packages are available (and import into global namespace)
+    Handles python and R packages via rpy2
+    If package is a tuple then imports as follows: ("numpy", "np") where "numpy" is full package name and "np" is abbreviation
+    If R packages are being checked, please install rpy2
+    To import packages into current namespace: namespace = globals()
+
+    packages: str, non-tuple iterable
+
+    usage:
+    @check_packages(["sklearn", "scipy"], language="python")
+    def f():
+        pass
+
+    @check_packages(["ape"], language="r")
+    def f():
+        pass
+    """
+    # Force packages into sorted non-redundant list
+    if isinstance(packages,(str, tuple)):
+        packages = [packages]
+    packages = set(packages)
+
+    # Set up decorator for Python imports
+    if language.lower() == "python":
+        import_package = import_module
+        importing_error = ImportError
+    # Set up decorator for R imports
+    if language.lower() == "r":
+        try:
+            import rpy2
+        except ImportError:
+            raise Exception("Please install 'rpy2' to import R packages")
+        from rpy2.robjects.packages import importr
+        from rpy2 import __version__ as rpy2_version
+        rpy2_version_major = int(rpy2_version.split(".")[0])
+        if rpy2_version_major == 2:
+            from rpy2.rinterface import RRuntimeError
+        if rpy2_version_major == 3:
+            from rpy2.rinterface_lib.embedded import RRuntimeError
+        import_package = importr
+        importing_error = RRuntimeError
+
+    # Wrapper
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            missing_packages = []
+            for pkg in packages:
+                if isinstance(pkg, tuple):
+                    assert len(pkg) == 2, "If a package is tuple type then it must have 2 elements e.g. ('numpy', 'np')"
+                    pkg_name, pkg_variable = pkg
+                else:
+                    pkg_name = pkg_variable = pkg 
+                try:
+                    package = import_package(pkg_name)
+                    globals()[pkg_variable] = package
+                    if namespace is not None:
+                        namespace[pkg_variable] = package
+                    if verbose:
+                        print("Importing {} as {}".format(pkg_name, pkg_variable), True, file=sys.stderr)
+                except importing_error:
+                    missing_packages.append(pkg_name)
+                    if verbose:
+                        print("Cannot import {}:".format(pkg_name), False, file=sys.stderr)
+            assert not missing_packages, "Please install the following {} packages to use this function:\n{}".format(language.capitalize(), ", ".join(missing_packages))
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
 
 # ===========
 # Types
@@ -1053,7 +1123,7 @@ def read_ebi_sample_metadata(query, base_url="https://www.ebi.ac.uk/metagenomics
     )
 
 # Read HMMER
-def read_hmmer(path, program="hmmsearch", format="tblout", add_header_as_index=False):
+def read_hmmer(path, program="hmmsearch", format="tblout", add_header_as_index=False, verbose=True):
     """
     Developed using HMMER v3.2.1
     # =========
@@ -1170,7 +1240,7 @@ def read_hmmer(path, program="hmmsearch", format="tblout", add_header_as_index=F
         cut_index = {"tblout":18, "domtblout":22}[format]
         data = list()
         header = list()
-        with get_file_object(path, "read") as f:
+        with get_file_object(path, "read", verbose=verbose) as f:
             for line in f.readlines():
                 if line.startswith("#"):
                     header.append(line)
@@ -1201,6 +1271,30 @@ def read_hmmer(path, program="hmmsearch", format="tblout", add_header_as_index=F
         df.index.name = "\n".join(map(str.strip, np.asarray(header)[[5,9,11]]))
     return df
 
+# Read STAR log
+def read_star_log(path, verbose=False):
+    """
+    STAR: https://github.com/alexdobin/STAR
+    FILE: star_Log.final.out
+    Designed using STAR v2.7.3a
+    """
+    with get_file_object(path, mode="read", verbose=verbose) as f:
+        data = dict()
+        category = "UTILITY"
+        for line in f:
+            line = line.strip()
+            if line:
+                if "|" not in line:
+                    category = line[:-1]
+                else:
+                    field, info = map(lambda x:x.strip(), line.split("|"))
+                if isinstance(info, str):
+                    try:
+                        info = eval(info.replace("%",""))
+                    except (SyntaxError, NameError):
+                        pass
+                data[(category, field)] = info
+        return pd.Series(data, name=path)
 
 # ==============
 # Bioinformatics
@@ -1244,3 +1338,43 @@ def hash_kmer(kmer, random_state=0):
 #         hash += 2**64
 
     return hash
+
+# =======
+# Objects
+# =======
+class Suppress(object):
+    # Adapted from the following source:
+    # https://stackoverflow.com/questions/50691545/how-to-use-a-with-statement-to-suppress-sys-stdout-or-sys-stderr
+    def __init__(self, show_stdout=False, show_stderr=False):
+        self.show_stdout = show_stdout
+        self.show_stderr = show_stderr
+        self.original_stdout = None
+        self.original_stderr = None
+
+    def __enter__(self):
+        devnull = open(os.devnull, "w")
+
+        # Suppress streams
+        if not self.show_stdout:
+            self.original_stdout = sys.stdout
+            sys.stdout = devnull
+
+        if not self.show_stderr:
+            self.original_stderr = sys.stderr
+            sys.stderr = devnull
+
+    def __exit__(self, *args, **kwargs):
+        # Restore streams
+        if not self.show_stdout:
+            sys.stdout = self.original_stdout
+
+        if not self.show_stderr:
+            sys.stderr = self.original_stderr
+            
+    def __call__(self, func):
+        @functools.wraps(func)
+        def decorated(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+        return decorated
+    

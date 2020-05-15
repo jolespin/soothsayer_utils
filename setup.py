@@ -25,8 +25,9 @@ name='soothsayer_utils',
         "pathlib2",
         "tqdm >=4.19",
         "tzlocal",
-        "biopython",
-        "mmh3",
         "bz2file",
+        ## Optional: 
+        # "biopython",
+        # "mmh3",
       ],
 )
