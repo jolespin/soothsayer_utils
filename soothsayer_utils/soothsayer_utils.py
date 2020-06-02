@@ -131,7 +131,7 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     assert func_operation(query,target), "{}\n{}".format(message, target)
 
 # Check packages
-def check_packages(packages, namespace=None,  language="python", import_into_backend=True, verbose=False):
+def check_packages(packages, namespace=None,  language="python", import_into_backend=False, verbose=False):
     """
     Check if packages are available (and import into global namespace)
     Handles python and R packages via rpy2
