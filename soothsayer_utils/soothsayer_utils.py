@@ -27,12 +27,12 @@ import numpy as np
 # Formatting
 # =====
 # Get duration
-def format_duration(start_time):
+def format_duration(t0):
     """
     Adapted from @john-fouhy:
     https://stackoverflow.com/questions/538666/python-format-timedelta-to-string
     """
-    duration = time.time() - start_time
+    duration = time.time() - t0
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
     return "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
@@ -169,12 +169,15 @@ def check_packages(packages, namespace=None,  language="python", import_into_bac
         from rpy2.robjects.packages import importr
         from rpy2 import __version__ as rpy2_version
         rpy2_version_major = int(rpy2_version.split(".")[0])
+        assert rpy2_version_major > 1, "Please update your rpy2 version"
         if rpy2_version_major == 2:
             from rpy2.rinterface import RRuntimeError
+            importing_error = RRuntimeError
         if rpy2_version_major == 3:
-            from rpy2.rinterface_lib.embedded import RRuntimeError
+            # from rpy2.rinterface_lib.embedded import RRuntimeError
+            from rpy2.robjects.packages import PackageNotInstalledError
+            importing_error = PackageNotInstalledError
         import_package = importr
-        importing_error = RRuntimeError
 
     # Wrapper
     def decorator(func):
@@ -741,7 +744,7 @@ def read_object(path, compression="infer", serialization_module=pickle):
     return obj
 
 # Writing serial object
-def write_object(obj, path, compression="infer", serialization_module=pickle, protocol=pickle.HIGHEST_PROTOCOL, *args):
+def write_object(obj, path, compression="infer", serialization_module=pickle, protocol=None, *args):
     """
     Extensions:
     pickle ==> .pkl
@@ -755,7 +758,7 @@ def write_object(obj, path, compression="infer", serialization_module=pickle, pr
     # Use infer_compression here
     if compression == "infer":
         _ , ext = os.path.splitext(path)
-        if (ext == ".pkl") or (ext == ".dill"):
+        if ext in {".pkl", ".dill"}: # if ext in (ext == ".pkl") or (ext == ".dill"):
             compression = None
         if ext in {".pgz", ".gz"}:
             compression = "gzip"

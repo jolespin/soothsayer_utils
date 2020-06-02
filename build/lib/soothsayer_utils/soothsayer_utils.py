@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, division
+
 # Built-ins
 import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, requests, operator, warnings, functools
 from collections import OrderedDict, defaultdict, Mapping
@@ -7,6 +8,7 @@ from io import TextIOWrapper
 import xml.etree.ElementTree as ET
 from importlib import import_module
 
+# Version-specific modules
 if sys.version_info.major == 2:
     import pathlib2 as pathlib
     import string
@@ -19,19 +21,18 @@ else:
 from tqdm import tqdm, tqdm_notebook, tqdm_gui
 import pandas as pd
 import numpy as np
-from Bio.SeqIO.FastaIO import SimpleFastaParser
-import mmh3
+
 
 # =====
 # Formatting
 # =====
 # Get duration
-def format_duration(start_time):
+def format_duration(t0):
     """
     Adapted from @john-fouhy:
     https://stackoverflow.com/questions/538666/python-format-timedelta-to-string
     """
-    duration = time.time() - start_time
+    duration = time.time() - t0
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
     return "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
@@ -130,13 +131,14 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     assert func_operation(query,target), "{}\n{}".format(message, target)
 
 # Check packages
-def check_packages(packages, namespace=None, language="python", verbose=False):
+def check_packages(packages, namespace=None,  language="python", import_into_backend=True, verbose=False):
     """
     Check if packages are available (and import into global namespace)
     Handles python and R packages via rpy2
     If package is a tuple then imports as follows: ("numpy", "np") where "numpy" is full package name and "np" is abbreviation
     If R packages are being checked, please install rpy2
     To import packages into current namespace: namespace = globals()
+    To import packages in backend, e.g. if this is used in a module/script, use `import_into_backend`
 
     packages: str, non-tuple iterable
 
@@ -187,7 +189,8 @@ def check_packages(packages, namespace=None, language="python", verbose=False):
                     pkg_name = pkg_variable = pkg 
                 try:
                     package = import_package(pkg_name)
-                    globals()[pkg_variable] = package
+                    if import_into_backend:
+                        globals()[pkg_variable] = package
                     if namespace is not None:
                         namespace[pkg_variable] = package
                     if verbose:
@@ -738,7 +741,7 @@ def read_object(path, compression="infer", serialization_module=pickle):
     return obj
 
 # Writing serial object
-def write_object(obj, path, compression="infer", serialization_module=pickle, protocol=pickle.HIGHEST_PROTOCOL, *args):
+def write_object(obj, path, compression="infer", serialization_module=pickle, protocol=None, *args):
     """
     Extensions:
     pickle ==> .pkl
@@ -752,7 +755,7 @@ def write_object(obj, path, compression="infer", serialization_module=pickle, pr
     # Use infer_compression here
     if compression == "infer":
         _ , ext = os.path.splitext(path)
-        if (ext == ".pkl") or (ext == ".dill"):
+        if ext in {".pkl", ".dill"}: # if ext in (ext == ".pkl") or (ext == ".dill"):
             compression = None
         if ext in {".pgz", ".gz"}:
             compression = "gzip"
@@ -794,10 +797,12 @@ def read_script_as_module(name_module, path):
     return module
 
 # Read Fasta File
+@check_packages(["Bio"], import_into_backend=False)
 def read_fasta(path, description=True, case=None, func_header=None, into=pd.Series, compression="infer", name=None, verbose=False):
     """
     Reads in a single fasta file or a directory of fasta files into a dictionary.
     """
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
     # Get path
     path = format_path(path)
 
@@ -1316,11 +1321,14 @@ def reverse_complement(seq):
     return rev_comp
 
 # Murmurhash of K-mer
+@check_packages(["mmh3"], import_into_backend=False)
 def hash_kmer(kmer, random_state=0):
     """
     Adapted from the following source:
     https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
     """
+    import mmh3
+
     kmer = kmer.upper()
 
     # Calculate the reverse complement

@@ -33,7 +33,7 @@
 # =======
 # Version
 # =======
-__version__= "2020.05.14"
+__version__= "2020.05.20"
 __author__ = "Josh L. Espinoza"
 __email__ = "jespinoz@jcvi.org, jol.espinoz@gmail.com"
 __url__ = "https://github.com/jolespin/soothsayer_utils"
