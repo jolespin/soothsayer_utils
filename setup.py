@@ -29,5 +29,6 @@ name='soothsayer_utils',
         ## Optional: 
         # "biopython",
         # "mmh3",
+        # "matplotlib",
       ],
 )
