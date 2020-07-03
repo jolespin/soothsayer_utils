@@ -85,12 +85,14 @@ def format_duration(t0):
 
 
 # Format file path
-def format_path(path, into=str):
+def format_path(path,  into=str, absolute=False):
     assert not is_file_like(path), "`path` cannot be file-like"
     if hasattr(path, "absolute"):
         path = str(path.absolute())
     if hasattr(path, "path"):
         path = str(path.path)
+    if absolute:
+        path = os.path.abspath(path)
     return into(path)
 
 # Format header for printing
