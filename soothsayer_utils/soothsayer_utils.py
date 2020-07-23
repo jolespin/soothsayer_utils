@@ -346,6 +346,19 @@ def is_color(obj):
 #                         verdict = True
         return verdict
 
+@check_packages(["matplotlib"])
+def get_color_midpoint(a, b, alpha=1.0, return_type="hex"):
+    from matplotlib.colors import to_rgba, to_hex
+    assert_acceptable_arguments(return_type, {"rgba", "rgb", "hex"})
+    a = to_rgba(a, alpha=alpha)
+    b = to_rgba(b, alpha=alpha)
+    c = tuple(np.stack([a,b]).mean(axis=0))
+    if return_type == "rgba":
+        return c
+    if return_type == "rgb":
+        return c[:-1]
+    if return_type == "hex":
+        return to_hex(c)
 # =======
 # Utility
 # =======
@@ -1573,4 +1586,4 @@ def get_iris_data(return_data=["X", "y", "colors", "corr", "sim", "dism"], noise
     if len(output) == 1:
         return output[0]
     else:
-        return tuple(output)
+        return output
