@@ -26,6 +26,63 @@ import numpy as np
 # =====
 # Formatting
 # =====
+# Remove pairwise nan
+def remove_pairwise_nan(a, b, checks=True):
+    """
+    Remove nan values for a pairwise function
+    
+    Benchmark:
+    data:150 dimensionality pd.Series with 1 nan in a
+    checks=True: 177 µs ± 14.3 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+    checks=False: 111 µs ± 1.91 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+    """
+    if checks:
+        assert isinstance(a, (np.ndarray, pd.Series))
+        assert type(a) is type(b), "`a` and `b` must be the same type"
+        assert a.size == b.size, "`a` and `b` must be the same size.  The sizes are {} and {}, respectively".format(a.size, b.size)
+        if isinstance(a, pd.Series):
+            assert np.all(a.index == b.index), "`a` and `b` must be the same index"
+    index = None
+    name_a = None
+    name_b = None
+    if isinstance(a, pd.Series):
+        index = a.index
+        name_a = a.name
+        name_b = b.name
+        a = a.values
+        b = b.values
+    mask_nan = ~np.logical_or(np.isnan(a), np.isnan(b))
+    a = a[mask_nan]
+    b = b[mask_nan]
+    if index is not None:
+        a = pd.Series(a, index=index[mask_nan], name=name_a)
+        b = pd.Series(b, index=index[mask_nan], name=name_b)
+    return (a,b)
+
+# Format pairwise
+def format_pairwise(a, b, nans_ok=True, assert_not_empty=True):
+    """
+    Prepare two pd.Series for a pairwise operation by getting overlapping indices and droping nan
+    """
+    # Assert a and b are series
+    assert isinstance(a, pd.Series)
+    assert isinstance(b, pd.Series)
+    # Get overlap of index
+    index = a.index & b.index
+    if assert_not_empty:
+        assert index.size > 0, "There are no overlapping elements between a.index and b.index"
+    a = a[index]
+    b = b[index]
+    
+    number_of_nans = pd.concat([a.isnull(), b.isnull()]).sum()
+    
+    if number_of_nans > 0:
+        if nans_ok:
+            a, b = remove_pairwise_nan(a,b,checks=False)
+        else:
+            raise ValueError("`nans_ok=False` and there are {} total `nan` between `a` and `b`".format(number_of_nans))
+    return a, b
+
 # Format memory
 def format_memory(B, unit="infer", return_units=True):
     """
