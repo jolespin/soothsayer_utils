@@ -219,6 +219,20 @@ def dict_filter(d, keys, into=dict):
         keys = filter(f, d.keys())
     return into(map(lambda k:(k,d[k]), keys))
 
+# Convert python dictionary to bash
+def dict_py_to_bash(d, bash_obj_name="DICT"):
+    """
+    Adapted from source:
+    * https://stackoverflow.com/questions/1494178/how-to-define-hash-tables-in-bash
+    
+    Converts a Python dictionary or pd.Series to a bash dictionary.
+    """
+    bash_placeholder = "declare -A {}=(".format(bash_obj_name)
+    for k,v in d.items():
+        bash_placeholder += ' ["{}"]="{}"'.format(k,v)
+    bash_placeholder += ")"
+    return bash_placeholder
+
 # ===========
 # Assertions
 # ===========
@@ -568,7 +582,7 @@ def iterable_depth(arg, exclude=None):
     return 1 + depth_in
 
 # Flatten nested iterables
-def flatten(nested_iterable, into=list, **kwargs_iterable):
+def flatten(nested_iterable, into=list, unique=False, **kwargs_iterable):
     # Adapted from @wim:
     # https://stackoverflow.com/questions/16312257/flatten-an-iterable-of-iterables
     def _func_recursive(nested_iterable):
@@ -580,6 +594,8 @@ def flatten(nested_iterable, into=list, **kwargs_iterable):
                 yield x
     # Unpack data
     data_flattened = list(_func_recursive(nested_iterable))
+    if unique:
+        data_flattened = sorted(set(data_flattened))
     # Convert type
     return into(data_flattened, **kwargs_iterable)
 
