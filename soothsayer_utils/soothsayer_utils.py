@@ -242,7 +242,11 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     eq: operator.eq(a, b) : ==
     ge: operator.ge(a, b) : >=
     """
-    if not is_nonstring_iterable(query):
+    # If query is not a nonstring iterable or a tuple
+    if any([
+            not is_nonstring_iterable(query),
+            isinstance(query,tuple),
+            ]):
         query = [query]
     query = set(query)
     target = set(target)
@@ -388,6 +392,10 @@ def is_in_namespace(variable_names, namespace, func_logic=all):
 def is_symmetrical(X, tol=None):
     assert len(X.shape) == 2 , "`X` must be 2-dimensional"
     assert X.shape[0] == X.shape[1], "`X` must be square"
+    X = X.copy()
+    if isinstance(X, pd.DataFrame):
+        X = X.values
+    np.fill_diagonal(X, 0)
     
     if tol is None:
         return np.all(np.tril(X) == np.triu(X).T)
