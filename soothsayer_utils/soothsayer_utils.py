@@ -611,7 +611,23 @@ def flatten(nested_iterable, into=list, unique=False, **kwargs_iterable):
 def range_like(data, start=0):
     return np.arange(len(data)) + start
 
+# Set Intersection
+def intersection(*iterables, **kwargs):
+    sets = map(set, iterables)
+    if "into" in kwargs: # Py2/3 Compatability
+        into = kwargs.pop("into")
+    else:
+        into = set
+    return into(set.intersection(*sets), **kwargs)
 
+# Set Union
+def union(*iterables, **kwargs):
+    sets = map(set, iterables)
+    if "into" in kwargs: # Py2/3 Compatability
+        into = kwargs.pop("into")
+    else:
+        into = set
+    return into(set.union(*sets), **kwargs)
 # =========
 # I/O
 # =========
