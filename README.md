@@ -17,6 +17,7 @@ bz2file # Python 2/3 compatibility
 # Optional:
 biopython
 mmh3
+matplotlib
 ```
 #### Install
 ```

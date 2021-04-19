@@ -6,7 +6,7 @@ import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, requests, oper
 from collections import OrderedDict, defaultdict, Mapping
 from io import TextIOWrapper
 import xml.etree.ElementTree as ET
-from importlib import import_module
+import importlib
 
 # Version-specific modules
 if sys.version_info.major == 2:
@@ -26,6 +26,109 @@ import numpy as np
 # =====
 # Formatting
 # =====
+# Remove pairwise nan
+def remove_pairwise_nan(a, b, checks=True):
+    """
+    Remove nan values for a pairwise function
+    
+    Benchmark:
+    data:150 dimensionality pd.Series with 1 nan in a
+    checks=True: 177 µs ± 14.3 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+    checks=False: 111 µs ± 1.91 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+    """
+    if checks:
+        assert isinstance(a, (np.ndarray, pd.Series))
+        assert type(a) is type(b), "`a` and `b` must be the same type"
+        assert a.size == b.size, "`a` and `b` must be the same size.  The sizes are {} and {}, respectively".format(a.size, b.size)
+        if isinstance(a, pd.Series):
+            assert np.all(a.index == b.index), "`a` and `b` must be the same index"
+    index = None
+    name_a = None
+    name_b = None
+    if isinstance(a, pd.Series):
+        index = a.index
+        name_a = a.name
+        name_b = b.name
+        a = a.values
+        b = b.values
+    mask_nan = ~np.logical_or(np.isnan(a), np.isnan(b))
+    a = a[mask_nan]
+    b = b[mask_nan]
+    if index is not None:
+        a = pd.Series(a, index=index[mask_nan], name=name_a)
+        b = pd.Series(b, index=index[mask_nan], name=name_b)
+    return (a,b)
+
+# Format pairwise
+def format_pairwise(a, b, nans_ok=True, assert_not_empty=True):
+    """
+    Prepare two pd.Series for a pairwise operation by getting overlapping indices and droping nan
+    """
+    # Assert a and b are series
+    assert isinstance(a, pd.Series)
+    assert isinstance(b, pd.Series)
+    # Get overlap of index
+    index = a.index & b.index
+    if assert_not_empty:
+        assert index.size > 0, "There are no overlapping elements between a.index and b.index"
+    a = a[index]
+    b = b[index]
+    
+    number_of_nans = pd.concat([a.isnull(), b.isnull()]).sum()
+    
+    if number_of_nans > 0:
+        if nans_ok:
+            a, b = remove_pairwise_nan(a,b,checks=False)
+        else:
+            raise ValueError("`nans_ok=False` and there are {} total `nan` between `a` and `b`".format(number_of_nans))
+    return a, b
+
+# Format memory
+def format_memory(B, unit="infer", return_units=True):
+    """
+    Return the given bytes as a human readable KB, MB, GB, or TB string
+    1 KB = 1024 Bytes
+
+    Adapted from the following source (@whereisalext):
+    https://stackoverflow.com/questions/12523586/python-format-size-application-converting-b-to-kb-mb-gb-tb/52379087
+    """
+    B = float(B)
+    KB = float(1024)
+    MB = float(KB ** 2) # 1,048,576
+    GB = float(KB ** 3) # 1,073,741,824
+    TB = float(KB ** 4) # 1,099,511,627,776
+    
+    # Human readable
+    size_in_b = int(B)
+    size_in_kb = B/KB
+    size_in_mb = B/MB
+    size_in_gb = B/GB
+    size_in_tb = B/TB
+    
+    if return_units:
+        size_in_b = '{0} B'.format(size_in_b)
+        size_in_kb = '{0:.3f} KB'.format(size_in_kb)
+        size_in_mb = '{0:.3f} MB'.format(size_in_mb)
+        size_in_gb = '{0:.3f} GB'.format(size_in_gb)
+        size_in_tb = '{0:.3f} TB'.format(size_in_tb)
+    
+    unit = unit.lower()
+    assert_acceptable_arguments(unit.lower(), {"infer", "b", "kb", "mb", "gb", "tb"})
+    if unit != "infer":
+        return {"b":size_in_b, "kb":size_in_kb, "mb":size_in_mb, "gb":size_in_gb, "tb":size_in_tb}[unit]
+    else:
+        if B < KB:
+            return size_in_b
+        elif KB <= B < MB:
+            return size_in_kb
+        elif MB <= B < GB:
+            return size_in_mb
+        elif GB <= B < TB:
+            return size_in_gb
+        elif TB <= B:
+            return size_in_tb
+
+
 # Get duration
 def format_duration(t0):
     """
@@ -39,12 +142,14 @@ def format_duration(t0):
 
 
 # Format file path
-def format_path(path, into=str):
+def format_path(path,  into=str, absolute=False):
     assert not is_file_like(path), "`path` cannot be file-like"
     if hasattr(path, "absolute"):
         path = str(path.absolute())
     if hasattr(path, "path"):
         path = str(path.path)
+    if absolute:
+        path = os.path.abspath(path)
     return into(path)
 
 # Format header for printing
@@ -114,6 +219,20 @@ def dict_filter(d, keys, into=dict):
         keys = filter(f, d.keys())
     return into(map(lambda k:(k,d[k]), keys))
 
+# Convert python dictionary to bash
+def dict_py_to_bash(d, bash_obj_name="DICT"):
+    """
+    Adapted from source:
+    * https://stackoverflow.com/questions/1494178/how-to-define-hash-tables-in-bash
+    
+    Converts a Python dictionary or pd.Series to a bash dictionary.
+    """
+    bash_placeholder = "declare -A {}=(".format(bash_obj_name)
+    for k,v in d.items():
+        bash_placeholder += ' ["{}"]="{}"'.format(k,v)
+    bash_placeholder += ")"
+    return bash_placeholder
+
 # ===========
 # Assertions
 # ===========
@@ -123,7 +242,11 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     eq: operator.eq(a, b) : ==
     ge: operator.ge(a, b) : >=
     """
-    if not is_nonstring_iterable(query):
+    # If query is not a nonstring iterable or a tuple
+    if any([
+            not is_nonstring_iterable(query),
+            isinstance(query,tuple),
+            ]):
         query = [query]
     query = set(query)
     target = set(target)
@@ -131,7 +254,7 @@ def assert_acceptable_arguments(query, target, operation="le", message="Invalid 
     assert func_operation(query,target), "{}\n{}".format(message, target)
 
 # Check packages
-def check_packages(packages, namespace=None,  language="python", import_into_backend=True, verbose=False):
+def check_packages(packages, namespace=None,  language="python", import_into_backend=False, verbose=False):
     """
     Check if packages are available (and import into global namespace)
     Handles python and R packages via rpy2
@@ -158,7 +281,7 @@ def check_packages(packages, namespace=None,  language="python", import_into_bac
 
     # Set up decorator for Python imports
     if language.lower() == "python":
-        import_package = import_module
+        import_package = importlib.import_module
         importing_error = ImportError
     # Set up decorator for R imports
     if language.lower() == "r":
@@ -266,6 +389,55 @@ def is_in_namespace(variable_names, namespace, func_logic=all):
     namespace = set(namespace)
     return func_logic(map(lambda x: x in namespace, variable_names))
 
+def is_symmetrical(X, tol=None):
+    assert len(X.shape) == 2 , "`X` must be 2-dimensional"
+    assert X.shape[0] == X.shape[1], "`X` must be square"
+    X = X.copy()
+    if isinstance(X, pd.DataFrame):
+        X = X.values
+    np.fill_diagonal(X, 0)
+    
+    if tol is None:
+        return np.all(np.tril(X) == np.triu(X).T)
+    if tol:
+        return (np.tril(X) - np.triu(X).T).ravel().min() < tol
+
+def is_graph(obj, attr="has_edge"):
+    return hasattr(obj, attr)
+
+@check_packages(["matplotlib"])
+def is_color(obj):
+    from matplotlib.colors import to_rgba
+    # Note: This can't handle values that are RGB in (0-255) only (0,1)
+    try:
+        to_rgba(obj)
+        return True
+    except ValueError:
+        verdict = False
+        if is_nonstring_iterable(obj):
+            if all(isinstance(c, (float, int)) for c in obj):
+                # Check [0,1]
+                if all(0 <= c <= 1 for c in obj):
+                    verdict = True
+#                 # Check [0,255]
+#                 if not verdict:
+#                     if all(0 <= c <= 255 for c in obj):
+#                         verdict = True
+        return verdict
+
+@check_packages(["matplotlib"])
+def get_color_midpoint(a, b, alpha=1.0, return_type="hex"):
+    from matplotlib.colors import to_rgba, to_hex
+    assert_acceptable_arguments(return_type, {"rgba", "rgb", "hex"})
+    a = to_rgba(a, alpha=alpha)
+    b = to_rgba(b, alpha=alpha)
+    c = tuple(np.stack([a,b]).mean(axis=0))
+    if return_type == "rgba":
+        return c
+    if return_type == "rgb":
+        return c[:-1]
+    if return_type == "hex":
+        return to_hex(c)
 # =======
 # Utility
 # =======
@@ -418,7 +590,7 @@ def iterable_depth(arg, exclude=None):
     return 1 + depth_in
 
 # Flatten nested iterables
-def flatten(nested_iterable, into=list, **kwargs_iterable):
+def flatten(nested_iterable, into=list, unique=False, **kwargs_iterable):
     # Adapted from @wim:
     # https://stackoverflow.com/questions/16312257/flatten-an-iterable-of-iterables
     def _func_recursive(nested_iterable):
@@ -430,6 +602,8 @@ def flatten(nested_iterable, into=list, **kwargs_iterable):
                 yield x
     # Unpack data
     data_flattened = list(_func_recursive(nested_iterable))
+    if unique:
+        data_flattened = sorted(set(data_flattened))
     # Convert type
     return into(data_flattened, **kwargs_iterable)
 
@@ -437,7 +611,23 @@ def flatten(nested_iterable, into=list, **kwargs_iterable):
 def range_like(data, start=0):
     return np.arange(len(data)) + start
 
+# Set Intersection
+def intersection(*iterables, **kwargs):
+    sets = map(set, iterables)
+    if "into" in kwargs: # Py2/3 Compatability
+        into = kwargs.pop("into")
+    else:
+        into = set
+    return into(set.intersection(*sets), **kwargs)
 
+# Set Union
+def union(*iterables, **kwargs):
+    sets = map(set, iterables)
+    if "into" in kwargs: # Py2/3 Compatability
+        into = kwargs.pop("into")
+    else:
+        into = set
+    return into(set.union(*sets), **kwargs)
 # =========
 # I/O
 # =========
@@ -1389,3 +1579,108 @@ class Suppress(object):
                 return func(*args, **kwargs)
         return decorated
     
+# ===========
+# Prototyping
+# ===========
+def get_iris_data(return_data=["X", "y", "colors", "corr", "sim", "dism"], noise=None, return_target_names=True, random_state=0, color_list=["#66c2a5", "#fc8d62","#8da0cb"], corr_method="pearson", axis=0):
+    """
+    return_data priority is [X, y, colors]
+    
+    Can also handle: 
+        * corr: Correlation determined by `corr_method`
+        * sim: (Correlation + 1)/2
+        * dism: 1 - sim
+    
+    axis: {0,1} [Default: 0 to return sample-level associations.  Use 1 for feature-level associations.]
+    
+    """
+    assert len(color_list) == 3, "`color_list` must be of length 3."
+    if isinstance(return_data, str):
+        return_data = [return_data]
+    assert_acceptable_arguments(return_data, ["X", "y", "colors", "corr", "sim", "dism"])
+    
+    # Data
+    iris_features = [[5.1, 3.5, 1.4, 0.2], [4.9, 3.0, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2], [5.0, 3.6, 1.4, 0.2], 
+                     [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5.0, 3.4, 1.5, 0.2], [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1], 
+                     [5.4, 3.7, 1.5, 0.2], [4.8, 3.4, 1.6, 0.2], [4.8, 3.0, 1.4, 0.1], [4.3, 3.0, 1.1, 0.1], [5.8, 4.0, 1.2, 0.2], 
+                     [5.7, 4.4, 1.5, 0.4], [5.4, 3.9, 1.3, 0.4], [5.1, 3.5, 1.4, 0.3], [5.7, 3.8, 1.7, 0.3], [5.1, 3.8, 1.5, 0.3], 
+                     [5.4, 3.4, 1.7, 0.2], [5.1, 3.7, 1.5, 0.4], [4.6, 3.6, 1.0, 0.2], [5.1, 3.3, 1.7, 0.5], [4.8, 3.4, 1.9, 0.2], 
+                     [5.0, 3.0, 1.6, 0.2], [5.0, 3.4, 1.6, 0.4], [5.2, 3.5, 1.5, 0.2], [5.2, 3.4, 1.4, 0.2], [4.7, 3.2, 1.6, 0.2], 
+                     [4.8, 3.1, 1.6, 0.2], [5.4, 3.4, 1.5, 0.4], [5.2, 4.1, 1.5, 0.1], [5.5, 4.2, 1.4, 0.2], [4.9, 3.1, 1.5, 0.2], 
+                     [5.0, 3.2, 1.2, 0.2], [5.5, 3.5, 1.3, 0.2], [4.9, 3.6, 1.4, 0.1], [4.4, 3.0, 1.3, 0.2], [5.1, 3.4, 1.5, 0.2], 
+                     [5.0, 3.5, 1.3, 0.3], [4.5, 2.3, 1.3, 0.3], [4.4, 3.2, 1.3, 0.2], [5.0, 3.5, 1.6, 0.6], [5.1, 3.8, 1.9, 0.4], 
+                     [4.8, 3.0, 1.4, 0.3], [5.1, 3.8, 1.6, 0.2], [4.6, 3.2, 1.4, 0.2], [5.3, 3.7, 1.5, 0.2], [5.0, 3.3, 1.4, 0.2], 
+                     [7.0, 3.2, 4.7, 1.4], [6.4, 3.2, 4.5, 1.5], [6.9, 3.1, 4.9, 1.5], [5.5, 2.3, 4.0, 1.3], [6.5, 2.8, 4.6, 1.5], 
+                     [5.7, 2.8, 4.5, 1.3], [6.3, 3.3, 4.7, 1.6], [4.9, 2.4, 3.3, 1.0], [6.6, 2.9, 4.6, 1.3], [5.2, 2.7, 3.9, 1.4], 
+                     [5.0, 2.0, 3.5, 1.0], [5.9, 3.0, 4.2, 1.5], [6.0, 2.2, 4.0, 1.0], [6.1, 2.9, 4.7, 1.4], [5.6, 2.9, 3.6, 1.3], 
+                     [6.7, 3.1, 4.4, 1.4], [5.6, 3.0, 4.5, 1.5], [5.8, 2.7, 4.1, 1.0], [6.2, 2.2, 4.5, 1.5], [5.6, 2.5, 3.9, 1.1], 
+                     [5.9, 3.2, 4.8, 1.8], [6.1, 2.8, 4.0, 1.3], [6.3, 2.5, 4.9, 1.5], [6.1, 2.8, 4.7, 1.2], [6.4, 2.9, 4.3, 1.3], 
+                     [6.6, 3.0, 4.4, 1.4], [6.8, 2.8, 4.8, 1.4], [6.7, 3.0, 5.0, 1.7], [6.0, 2.9, 4.5, 1.5], [5.7, 2.6, 3.5, 1.0], 
+                     [5.5, 2.4, 3.8, 1.1], [5.5, 2.4, 3.7, 1.0], [5.8, 2.7, 3.9, 1.2], [6.0, 2.7, 5.1, 1.6], [5.4, 3.0, 4.5, 1.5], 
+                     [6.0, 3.4, 4.5, 1.6], [6.7, 3.1, 4.7, 1.5], [6.3, 2.3, 4.4, 1.3], [5.6, 3.0, 4.1, 1.3], [5.5, 2.5, 4.0, 1.3], 
+                     [5.5, 2.6, 4.4, 1.2], [6.1, 3.0, 4.6, 1.4], [5.8, 2.6, 4.0, 1.2], [5.0, 2.3, 3.3, 1.0], [5.6, 2.7, 4.2, 1.3], 
+                     [5.7, 3.0, 4.2, 1.2], [5.7, 2.9, 4.2, 1.3], [6.2, 2.9, 4.3, 1.3], [5.1, 2.5, 3.0, 1.1], [5.7, 2.8, 4.1, 1.3], 
+                     [6.3, 3.3, 6.0, 2.5], [5.8, 2.7, 5.1, 1.9], [7.1, 3.0, 5.9, 2.1], [6.3, 2.9, 5.6, 1.8], [6.5, 3.0, 5.8, 2.2], 
+                     [7.6, 3.0, 6.6, 2.1], [4.9, 2.5, 4.5, 1.7], [7.3, 2.9, 6.3, 1.8], [6.7, 2.5, 5.8, 1.8], [7.2, 3.6, 6.1, 2.5], 
+                     [6.5, 3.2, 5.1, 2.0], [6.4, 2.7, 5.3, 1.9], [6.8, 3.0, 5.5, 2.1], [5.7, 2.5, 5.0, 2.0], [5.8, 2.8, 5.1, 2.4], 
+                     [6.4, 3.2, 5.3, 2.3], [6.5, 3.0, 5.5, 1.8], [7.7, 3.8, 6.7, 2.2], [7.7, 2.6, 6.9, 2.3], [6.0, 2.2, 5.0, 1.5], 
+                     [6.9, 3.2, 5.7, 2.3], [5.6, 2.8, 4.9, 2.0], [7.7, 2.8, 6.7, 2.0], [6.3, 2.7, 4.9, 1.8], [6.7, 3.3, 5.7, 2.1], 
+                     [7.2, 3.2, 6.0, 1.8], [6.2, 2.8, 4.8, 1.8], [6.1, 3.0, 4.9, 1.8], [6.4, 2.8, 5.6, 2.1], [7.2, 3.0, 5.8, 1.6], 
+                     [7.4, 2.8, 6.1, 1.9], [7.9, 3.8, 6.4, 2.0], [6.4, 2.8, 5.6, 2.2], [6.3, 2.8, 5.1, 1.5], [6.1, 2.6, 5.6, 1.4], 
+                     [7.7, 3.0, 6.1, 2.3], [6.3, 3.4, 5.6, 2.4], [6.4, 3.1, 5.5, 1.8], [6.0, 3.0, 4.8, 1.8], [6.9, 3.1, 5.4, 2.1], 
+                     [6.7, 3.1, 5.6, 2.4], [6.9, 3.1, 5.1, 2.3], [5.8, 2.7, 5.1, 1.9], [6.8, 3.2, 5.9, 2.3], [6.7, 3.3, 5.7, 2.5], 
+                     [6.7, 3.0, 5.2, 2.3], [6.3, 2.5, 5.0, 1.9], [6.5, 3.0, 5.2, 2.0], [6.2, 3.4, 5.4, 2.3], [5.9, 3.0, 5.1, 1.8]]
+    iris_target = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+                   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    iris_target_names = ['setosa', 'versicolor', 'virginica']
+
+    
+    # Iris dataset
+    X = pd.DataFrame(iris_features,
+                     index = list(map(lambda i:"iris_{}".format(i), range(150))),
+                     columns = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width'],
+    )
+
+    y = pd.Series(iris_target,
+                           index = X.index,
+                           name = "Species")
+    colors = y.map(lambda k: color_list[k])
+
+    if noise is not None:
+        X_noise = pd.DataFrame(
+            np.random.RandomState(random_state).normal(size=(X.shape[0], noise)),
+            index=X.index,
+            columns=[*map(lambda j:"noise_{}".format(j), range(noise))]
+        )
+        X = pd.concat([X, X_noise], axis=1)
+        
+    if return_target_names:
+        y = y.map(lambda k: iris_target_names[k])
+        
+    output = list()
+    if "X" in return_data:
+        output.append(X)
+    if "y" in return_data:
+        output.append(y)
+    if "colors" in return_data:
+        output.append(colors)
+    if set(["corr","sim","dism"]) & set(return_data):
+        if axis == 0:
+            X = X.T
+        df_corr = X.corr(method=corr_method)
+        if "corr" in return_data:
+            output.append(df_corr)
+        if set(["sim", "dism"]) & set(return_data):
+            df_sim = (df_corr + 1)/2
+            if "sim" in return_data:
+                output.append(df_sim)
+            if "dism" in return_data:
+                df_dism = 1 - df_sim
+                output.append(df_dism)
+                
+    if len(output) == 1:
+        return output[0]
+    else:
+        return output
