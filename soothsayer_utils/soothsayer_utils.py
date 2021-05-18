@@ -352,6 +352,16 @@ def is_dict_like(obj):
 def is_all_same_type(iterable):
     iterable_types = set(map(lambda obj:type(obj), iterable))
     return len(iterable_types) == 1
+
+def is_iterable_of(obj, type, assert_iterable=False):
+    is_iterable = hasattr(obj, "__iter__")
+    if assert_iterable:
+        assert is_iterable, "`obj` is not an iterable"
+    if is_iterable:
+        return all(map(lambda x: isinstance(x,type), obj))
+    else:
+        return False
+        
 def is_number(x, num_type = np.number):
     return np.issubdtype(type(x), num_type)
 def is_query_class(x,query, case_sensitive=False):
@@ -735,9 +745,6 @@ def write_dataframe(data, path, sep="\t", compression="infer", pickled="infer", 
     path = format_path(path, str)
     _ , ext = os.path.splitext(path)
     dir, filename = os.path.split(path)
-    if not os.path.exists(dir):
-        dir = str(pathlib.Path(dir).absolute())
-        os.makedirs(dir, exist_ok=True)
 
     # Excel
     if excel == "infer":

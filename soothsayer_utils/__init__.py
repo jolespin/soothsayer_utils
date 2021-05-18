@@ -33,7 +33,7 @@
 # =======
 # Version
 # =======
-__version__= "2021.03.12"
+__version__= "2021.05.18"
 __author__ = "Josh L. Espinoza"
 __email__ = "jespinoz@jcvi.org, jol.espinoz@gmail.com"
 __url__ = "https://github.com/jolespin/soothsayer_utils"
@@ -54,7 +54,7 @@ __functions__ = [
   'read_ebi_sample_metadata', 'read_fasta', 'read_from_clipboard', 'read_gff3', 'read_gtf', 'read_ncbi_xml', 
   'read_object', 'read_script_as_module', 'read_url', 'reverse_complement', 'to_precision', 
    'write_dataframe', 'write_fasta', 'write_object',"get_file_object","read_textfile","check_packages","get_iris_data",
-   "get_color_midpoint","remove_pairwise_nan","format_pairwise","dict_py_to_bash",
+   "get_color_midpoint","remove_pairwise_nan","format_pairwise","dict_py_to_bash","is_iterable_of",
 ]
 __classes__ = ["Suppress"]
 
