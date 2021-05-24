@@ -641,12 +641,47 @@ def union(*iterables, **kwargs):
 # =========
 # I/O
 # =========
-def read_from_clipboard(sep="\n", into=list):
-    data = pd.io.clipboard.clipboard_get()
-    if sep is not None:
-        return into(filter(bool, map(lambda x:x.strip(), data.split(sep))))
+def read_column(path=None, into=list, linebreak="\n", lstrip=True, rstrip=True, compression="infer", sheet_name=0, astype=str, exclude=("nan")):
+    """
+    If path is None, column is read from clipboard
+    If path endswith .xls or .xlsx, 1st column from 1st sheet is read from excel doc
+    All else, column is read from filepath contents
+    """
+    if path is None:
+        from pandas.io.clipboard import clipboard_get
+        text = clipboard_get()
     else:
-        return data
+        if path.endswith((".xls", "xlsx")):
+            text = linebreak.join(map(str, read_dataframe(path, sheet_name=sheet_name).index))
+        else:
+            with get_file_object(path, mode="read", compression=compression, safe_mode=False, verbose=False) as f:
+                text = f.read()
+    
+    elements = list()
+    for element in text.split(linebreak):
+        if lstrip:
+            if isinstance(lstrip, str):
+                element = element.lstrip(lstrip)
+            else:
+                element = element.lstrip()
+        if rstrip:
+            if isinstance(rstrip, str):
+                element = element.rstrip(rstrip)
+            else:
+                element = element.rstrip()
+        if bool(element):
+            if element not in exclude:
+                element = astype(element)
+                elements.append(element)
+    return into(elements)
+
+def read_from_clipboard(sep="\n", into=list):
+    from pandas.io.clipboard import clipboard_get
+    text = clipboard_get()
+    if sep is not None:
+        return into(filter(bool, map(lambda x:x.strip(), text.split(sep))))
+    else:
+        return text
 
 # Read dataframe
 def read_dataframe(path, sep="infer", index_col=0, header=0, compression="infer", pickled="infer", func_index=None, func_columns=None, evaluate_columns=None, engine="c", verbose=False, excel="infer", infer_series=False, sheet_name=None,  **kwargs):

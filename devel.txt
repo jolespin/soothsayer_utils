@@ -1,3 +1,4 @@
+* 2021.05.19 - Added `read_column` function
 * 2021.05.18 - Added `is_iterable_of` function
 * 2021.03.12 - Added `union` and `intersection` methods to prepare for pandas deprecation of pd.Index() | pd.Index()
 *v2021.03.08 - Fixed `is_symmetrical` so it can handle diagonal of nan
