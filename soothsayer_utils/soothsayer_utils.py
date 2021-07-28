@@ -213,7 +213,9 @@ def dict_collapse(d, into=dict):
 def dict_filter(d, keys, into=dict):
     """
     keys can be an iterable or function
+    DEPRECATION: Soon.  I've never used this function since I've made it. 
     """
+    
     if hasattr(keys, "__call__"):
         f = keys
         keys = filter(f, d.keys())
@@ -232,6 +234,25 @@ def dict_py_to_bash(d, bash_obj_name="DICT"):
         bash_placeholder += ' ["{}"]="{}"'.format(k,v)
     bash_placeholder += ")"
     return bash_placeholder
+
+# Iterate nested dictionary
+from soothsayer_utils import is_dict_like
+def iterate_nested_dict(d: dict, into=tuple):
+    dicts_to_iterate = [(d, list())]
+    '''
+    The first item is the dict object and the second object is the prefix keys
+    
+    
+    Adapted from the following source (@kasra-k):
+    https://stackoverflow.com/a/68534657/678572
+    '''
+    while dicts_to_iterate:
+        current_dict, suffix = dicts_to_iterate.pop()
+        for k, v in current_dict.items():
+            if is_dict_like(v):
+                dicts_to_iterate.append((v, suffix + [k]))
+            else:
+                yield into(suffix + [k] + [v])
 
 # ===========
 # Assertions
@@ -684,12 +705,12 @@ def read_from_clipboard(sep="\n", into=list):
         return text
 
 # Read dataframe
-def read_dataframe(path, sep="infer", index_col=0, header=0, compression="infer", pickled="infer", func_index=None, func_columns=None, evaluate_columns=None, engine="c", verbose=False, excel="infer", infer_series=False, sheet_name=None,  **kwargs):
+def read_dataframe(path, sep="infer", index_col=0, header=0, compression="infer", pickled="infer", func_index=None, func_columns=None, evaluate_columns=None, evaluate_index=False, index_name=None, columns_name=None, engine="c", verbose=False, excel="infer", infer_series=False, sheet_name=None,  **kwargs):
     start_time= time.time()
     path = format_path(path, str)
     dir , ext = os.path.splitext(path)
     ext = ext.lower()
-
+    assert isinstance(evaluate_index, bool)
     if excel == "infer":
         if ext in {".xlsx", ".xls"}:
             excel = True
@@ -741,14 +762,16 @@ def read_dataframe(path, sep="infer", index_col=0, header=0, compression="infer"
 
     condition_A = any([(excel == False), (sheet_name is not None)])
     condition_B = all([(excel == True), (sheet_name is None)])
-
+    
+    # If it's not excel or sheet_name is specified
     if condition_A:
         # Map indices
         if func_index is not None:
             df.index = df.index.map(func_index)
         if func_columns is not None:
             df.columns = df.columns.map(func_columns)
-
+            
+        # Evaluate columns
         if evaluate_columns is not None:
             for field_column in evaluate_columns:
                 try:
@@ -756,16 +779,28 @@ def read_dataframe(path, sep="infer", index_col=0, header=0, compression="infer"
                 except ValueError:
                     if verbose:
                         print("Could not use `eval` on column=`{}`".format(field_column), file=sys.stderr)
+        # Evaluate index
+        if evaluate_index:
+            df.index = df.index.map(eval)
+            
+        # Name indices
+        if index_name is not None:
+            df.index.name = index_name
+        if columns_name is not None:
+            df.columns.name = columns_name
+            
         if verbose:
             print("{} | Dimensions: {} | Time: {}".format(
                 path.split('/')[-1],
                 df.shape,
                 format_duration(start_time),
                 ), file=sys.stderr)
+            
+    # If it's  excel or sheet_name is not specified
     if condition_B:
         if verbose:
             print("{} | Sheets: {} | Time: {}".format(
-            path.split('/')[-1],
+            path,
             len(df),
             format_duration(start_time),
             ), file=sys.stderr)
@@ -1726,3 +1761,26 @@ def get_iris_data(return_data=["X", "y", "colors", "corr", "sim", "dism"], noise
         return output[0]
     else:
         return output
+
+
+# def concatenate(dataframes:list, prefixes:list=None, axis=1, multiindex=True):
+#     if prefixes is  None:
+#         return pd.concat(dataframes, axis=axis)
+#     else:
+#         assert len(dataframes) == len(prefixes), "Length of `dataframes` and `prefixes` must match"
+#         assert not isinstance(dataframes, (set, frozenset)), "`dataframes` must be an ordered list"
+#         assert not isinstance(prefixes, (set, frozenset)), "`prefixes` must be an ordered list"
+#         assert isinstance(multiindex, bool), "`multiindex` must be True or False"
+#         df_output = list()
+#         if multiindex:
+#             # Use pd_prepend_index or whatever I called it
+#             for prefix, df in zip(prefixes, dataframes):
+#                 df = df.copy()
+#                 df.columns = df.columns.map(lambda j: (prefix, j))
+#                 df_output.append(df)
+#         else:
+#             for prefix, df in zip(prefixes, dataframes):
+#                 df = df.copy()
+#                 df.columns = df.columns.map(lambda j: "{}{}".format(prefix, j))
+#                 df_output.append(df)
+#         return pd.concat(df_output, axis=axis)
