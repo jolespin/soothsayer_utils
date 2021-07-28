@@ -236,7 +236,6 @@ def dict_py_to_bash(d, bash_obj_name="DICT"):
     return bash_placeholder
 
 # Iterate nested dictionary
-from soothsayer_utils import is_dict_like
 def iterate_nested_dict(d: dict, into=tuple):
     dicts_to_iterate = [(d, list())]
     '''
