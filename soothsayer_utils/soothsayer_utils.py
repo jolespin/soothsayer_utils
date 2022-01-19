@@ -2,8 +2,14 @@
 from __future__ import print_function, division
 
 # Built-ins
-import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, requests, operator, warnings, functools
-from collections import OrderedDict, defaultdict, Mapping
+import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, operator, warnings, functools
+import requests
+from collections import OrderedDict, defaultdict
+if sys.version_info.minor >= 10:
+    from collections.abc import Mapping 
+else:
+    from collections import Mapping
+
 from io import TextIOWrapper
 import xml.etree.ElementTree as ET
 import importlib
