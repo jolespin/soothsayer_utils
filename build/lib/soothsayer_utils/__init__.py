@@ -33,7 +33,7 @@
 # =======
 # Version
 # =======
-__version__= "2021.03.12"
+__version__= "2021.07.27"
 __author__ = "Josh L. Espinoza"
 __email__ = "jespinoz@jcvi.org, jol.espinoz@gmail.com"
 __url__ = "https://github.com/jolespin/soothsayer_utils"
@@ -51,10 +51,10 @@ __functions__ = [
  'infer_compression', 'is_all_same_type', 'is_dict', 'is_dict_like', 'is_file_like', 'is_function', 
  'is_in_namespace', 'is_nonstring_iterable', 'is_number', 'is_path_like', 'is_query_class',"is_symmetrical", "is_graph",
  'iterable_depth', 'join_as_strings',  'pad_left',   'pv', 'range_like', 'read_blast', 'read_dataframe',
-  'read_ebi_sample_metadata', 'read_fasta', 'read_from_clipboard', 'read_gff3', 'read_gtf', 'read_ncbi_xml', 
+  'read_ebi_sample_metadata', 'read_fasta', 'read_from_clipboard', "read_column", 'read_gff3', 'read_gtf', 'read_ncbi_xml', 
   'read_object', 'read_script_as_module', 'read_url', 'reverse_complement', 'to_precision', 
    'write_dataframe', 'write_fasta', 'write_object',"get_file_object","read_textfile","check_packages","get_iris_data",
-   "get_color_midpoint","remove_pairwise_nan","format_pairwise","dict_py_to_bash",
+   "get_color_midpoint","remove_pairwise_nan","format_pairwise","dict_py_to_bash","is_iterable_of","iterate_nested_dict",
 ]
 __classes__ = ["Suppress"]
 

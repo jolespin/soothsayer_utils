@@ -1,0 +1,35 @@
+{% set name = "soothsayer_utils" %}
+{% set version = "2022.01.19" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+  script: python -m pip install --no-deps --ignore-installed .
+
+source:
+  url: https://github.com/jolespin/soothsayer_utils/releases/download/v2022.01.19/soothsayer_utils-2022.1.19.tar.gz
+
+build:
+  noarch: python
+  number: 0
+
+requirements:
+  build:
+    - python >=2.7
+    - setuptools
+  run:
+    - python >=2.7
+    - pandas >=0.24.2
+    - tqdm
+    - bz2file
+    - tzlocal
+    - pathlib2
+    - requests
+    - numpy >=1.11
+
+about:
+  home: https://github.com/jolespin/soothsayer_utils
+  license: BSD-3
+  license_family: BSD
+  summary: 'Utility functions for Soothsayer'
+  description: 'Utility functions for Soothsayer'

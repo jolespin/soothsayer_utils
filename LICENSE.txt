@@ -1,17 +1,3 @@
-# ==============
-# goomba
-# ==============
-# Creating bash pipelines, in particular, for bioinformatics
-# ------------------------------------
-# GitHub: https://github.com/jolespin/goomba
-# PyPI: https://pypi.org/project/goomba/
-# ------------------------------------
-# =======
-# Contact
-# =======
-# Producer: Josh L. Espinoza
-# Contact: jespinoz@jcvi.org, jol.espinoz@gmail.com
-# Google Scholar: https://scholar.google.com/citations?user=r9y1tTQAAAAJ&hl
 # =======
 # License BSD-3
 # =======
