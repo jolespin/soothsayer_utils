@@ -2,6 +2,7 @@ graft soothsayer_utils
 include setup.py
 include LICENSE.txt
 include README.md
-global-exclude Icon?
-global-exclude *.py[co]
+global-exclude Icon*
+global-exclude Icon
+global-exclude *.py[cod]
 global-exclude .DS_Store
