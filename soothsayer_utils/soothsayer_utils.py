@@ -425,10 +425,14 @@ def is_in_namespace(variable_names, namespace, func_logic=all):
     namespace = set(namespace)
     return func_logic(map(lambda x: x in namespace, variable_names))
 
-def is_symmetrical(X, tol=None):
+def is_symmetrical(X, tol=None, nans_ok=True):
     assert len(X.shape) == 2 , "`X` must be 2-dimensional"
     assert X.shape[0] == X.shape[1], "`X` must be square"
+    
     X = X.copy()
+    if nans_ok:
+        X = X.fillna(0)
+ 
     if isinstance(X, pd.DataFrame):
         X = X.values
     np.fill_diagonal(X, 0)
@@ -438,7 +442,7 @@ def is_symmetrical(X, tol=None):
     if tol:
         return (np.tril(X) - np.triu(X).T).ravel().min() < tol
 
-def is_graph(obj, attr="has_edge"):
+def is_graph(obj, attr="add_edge"):
     return hasattr(obj, attr)
 
 @check_packages(["matplotlib"])

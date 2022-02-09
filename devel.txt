@@ -1,3 +1,4 @@
+* 2022.2.9 - Added igraph support for is_graph function and support for nan in is_symmetrical
 * 2022.01.19 - Added support for Python 3.10
 * 2021.07.27 - Added `iterated_nested_dict` function
 * 2021.06.22 - Added `evaluate_index`, `index_name`, and `columns_name` to `read_dataframe` function.  Also made verbose include full path instead of just filename.
