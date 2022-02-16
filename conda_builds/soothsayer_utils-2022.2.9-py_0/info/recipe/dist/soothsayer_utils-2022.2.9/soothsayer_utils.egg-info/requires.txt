@@ -1,0 +1,7 @@
+pandas
+numpy
+requests
+pathlib2
+tqdm>=4.19
+tzlocal
+bz2file

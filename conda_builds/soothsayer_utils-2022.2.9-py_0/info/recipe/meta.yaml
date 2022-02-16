@@ -1,0 +1,51 @@
+# This file created by conda-build 3.20.5
+# meta.yaml template originally from:
+# Origin b'https://github.com/jolespin/soothsayer_utils.git', commit b'dcfe0253073428b2a7e8b2e41593be1e53903464'
+# ------------------------------------------------
+
+package:
+    name: soothsayer_utils
+    script: $PYTHON -m pip install --no-deps --ignore-installed .
+    version: 2022.2.9
+source:
+    url: https://github.com/jolespin/soothsayer_utils/releases/download/v2022.2.9/soothsayer_utils-2022.2.9.tar.gz
+build:
+    noarch: python
+    number: '0'
+    string: py_0
+requirements:
+    build:
+        - ca-certificates 2021.10.8 h033912b_0
+        - libcxx 12.0.1 habf9029_1
+        - libffi 3.4.2 h0d85af4_5
+        - libzlib 1.2.11 h9173be1_1013
+        - ncurses 6.3 he49afe7_0
+        - openssl 3.0.0 h0d85af4_2
+        - pip 22.0.3 pyhd8ed1ab_0
+        - python 3.8.12 h43ca1e7_3_cpython
+        - python_abi 3.8 2_cp38
+        - readline 8.1 h05e3726_0
+        - setuptools 60.9.1 py38h50d1736_0
+        - sqlite 3.37.0 h23a322b_0
+        - tk 8.6.11 h5dbffcc_1
+        - wheel 0.37.1 pyhd8ed1ab_0
+        - xz 5.2.5 haf1e3a3_1
+        - zlib 1.2.11 h9173be1_1013
+    run:
+        - bz2file
+        - numpy >=1.11
+        - pandas >=0.24.2
+        - pathlib2
+        - python
+        - requests
+        - tqdm
+        - tzlocal
+about:
+    description: Utility functions for Soothsayer
+    home: https://github.com/jolespin/soothsayer_utils
+    license: BSD-3
+    license_family: BSD
+    summary: Utility functions for Soothsayer
+extra:
+    copy_test_source_files: true
+    final: true

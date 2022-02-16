@@ -23,11 +23,6 @@ matplotlib
 ```
 # "Stable" release (still developmental)
 pip install soothsayer-utils
-
 # Current release
 pip install git+https://github.com/jolespin/soothsayer_utils
-
-# Conda: 
-conda install -c jolespin soothsayer_utils
 ```
-Note: `conda` installation may not be as up-to-date as PyPI or GitHub release

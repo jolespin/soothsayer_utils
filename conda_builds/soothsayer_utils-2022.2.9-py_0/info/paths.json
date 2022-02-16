@@ -1,0 +1,65 @@
+{
+  "paths": [
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/INSTALLER",
+      "path_type": "hardlink",
+      "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+      "size_in_bytes": 5
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/LICENSE.txt",
+      "path_type": "hardlink",
+      "sha256": "b17a5529740cf5ea997949290f70fe20d9b39a7a40360a9f23bfae7a26e7aef4",
+      "size_in_bytes": 1563
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/METADATA",
+      "path_type": "hardlink",
+      "sha256": "fa578f11278ec27c99ba7da550aecf255fd94e0fcf7800d5a7d993744193e6ca",
+      "size_in_bytes": 453
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/RECORD",
+      "path_type": "hardlink",
+      "sha256": "e1bb7449dc499e893524eb81a84d6b4ce9b2299b4dcb7502a48ff03537ef43a4",
+      "size_in_bytes": 1063
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/REQUESTED",
+      "path_type": "hardlink",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_in_bytes": 0
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/WHEEL",
+      "path_type": "hardlink",
+      "sha256": "1b5e87e00dc87a84269cead8578b9e6462928e18a95f1f3373c9eef451a5bcc0",
+      "size_in_bytes": 92
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/direct_url.json",
+      "path_type": "hardlink",
+      "sha256": "4283c14f45b4ace514f88ffb4f6088bfd2de3179c65998a0390ee554be6c3d96",
+      "size_in_bytes": 105
+    },
+    {
+      "_path": "site-packages/soothsayer_utils-2022.2.9.dist-info/top_level.txt",
+      "path_type": "hardlink",
+      "sha256": "1eab96b43aff217865a124e31a9a46021c88d2b236501d1a5cea868ac5de4bff",
+      "size_in_bytes": 17
+    },
+    {
+      "_path": "site-packages/soothsayer_utils/__init__.py",
+      "path_type": "hardlink",
+      "sha256": "e0602aaf8393e5b321c006b21ce5d868626de0bf90e4fa1c44098c0c68e40026",
+      "size_in_bytes": 3609
+    },
+    {
+      "_path": "site-packages/soothsayer_utils/soothsayer_utils.py",
+      "path_type": "hardlink",
+      "sha256": "6b0885b198571faaddff9b55fb4c3362fd8698b983d3c7ef0e273c464902face",
+      "size_in_bytes": 71540
+    }
+  ],
+  "paths_version": 1
+}

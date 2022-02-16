@@ -1,0 +1,9 @@
+* 2022.2.9 - Added igraph support for is_graph function and support for nan in is_symmetrical
+* 2022.01.19 - Added support for Python 3.10
+* 2021.07.27 - Added `iterated_nested_dict` function
+* 2021.06.22 - Added `evaluate_index`, `index_name`, and `columns_name` to `read_dataframe` function.  Also made verbose include full path instead of just filename.
+* 2021.05.19 - Added `read_column` function
+* 2021.05.18 - Added `is_iterable_of` function
+* 2021.03.12 - Added `union` and `intersection` methods to prepare for pandas deprecation of pd.Index() | pd.Index()
+*v2021.03.08 - Fixed `is_symmetrical` so it can handle diagonal of nan
+Added 'tuple' support for 'query' in assert_acceptable_arguments

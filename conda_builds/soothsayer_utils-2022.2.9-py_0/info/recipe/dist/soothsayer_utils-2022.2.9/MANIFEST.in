@@ -5,7 +5,3 @@ include README.md
 global-exclude *.py[cod]
 global-exclude Icon*
 global-exclude .DS_Store
-exclude dist
-exclude *.egg-info
-exclude conda_builds
-exclude build

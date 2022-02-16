@@ -1,0 +1,13 @@
+[build-system]
+requires = [
+    "setuptools>=38.3.0",
+    "wheel",
+    "pandas >= 0.24",
+    "numpy >= 1.11",
+    "requests",
+    "pathlib2",
+    "tqdm >= 4.19",
+    "tzlocal",
+    "bz2file",
+]
+build-backend = "setuptools.build_meta"
