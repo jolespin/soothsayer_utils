@@ -5,11 +5,7 @@ from __future__ import print_function, division
 import os, sys, time, datetime, uuid, pickle, gzip, bz2, zipfile, operator, warnings, functools
 import requests
 from collections import OrderedDict, defaultdict
-if sys.version_info.minor >= 10:
-    from collections.abc import Mapping 
-else:
-    from collections import Mapping
-
+from collections.abc import Mapping 
 from io import TextIOWrapper
 import xml.etree.ElementTree as ET
 import importlib
@@ -1336,7 +1332,7 @@ def read_gtf(path, compression="infer", record_type=None, verbose = True, reset_
     return df_gtf
 
 # NCBI XML
-def read_ncbi_xml(path, index_name=None):
+def read_ncbi_xml(path, format="biosamples"):
     # Format path
     path = format_path(path)
     # Parse the XML tree
@@ -1344,13 +1340,16 @@ def read_ncbi_xml(path, index_name=None):
     root = tree.getroot()
     # Extract the attributes
     data = defaultdict(dict)
-    for record in pv(root.getchildren(), "Reading NCBI XML: {}".format(path)):
-        id_record = record.attrib["accession"]
-        for attribute in record.findall("Attributes/*"):
-            data[id_record][attribute.attrib["attribute_name"]] = attribute.text
+    for record in pv(list(root), "Reading NCBI XML: {}".format(path)):
+        if "accession" in record.attrib:
+            id_record = record.attrib["accession"]
+            for attribute in record.findall("Attributes/*"):
+                data[id_record][attribute.attrib["attribute_name"]] = attribute.text
     # Create pd.DataFrame
     df = pd.DataFrame(data).T
-    df.index.name = index_name
+    df.index.name = "id_biosample"
+    assert not df.empty, "Resulting dataframe is empty. Checking to make sure this is a biosample full XML or create a GitHub issue for debugging"
+    
     return df
 
 # Read EMBL-EBI sample metadata
